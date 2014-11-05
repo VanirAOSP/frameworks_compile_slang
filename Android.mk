@@ -30,8 +30,19 @@ endif
 endif
 local_cflags_for_slang += -DTARGET_BUILD_VARIANT=$(TARGET_BUILD_VARIANT)
 
-include $(LOCAL_PATH)/rs_version.mk
-local_cflags_for_slang += $(RS_VERSION_DEFINE)
+ifeq ($(mac_sdk_version),10.9)
+local_cflags_for_slang += -Wno-nested-anon-types -Wno-unused-private-field
+endif
+
+ifeq "REL" "$(PLATFORM_VERSION_CODENAME)"
+  RS_VERSION := $(PLATFORM_SDK_VERSION)
+else
+  # Increment by 1 whenever this is not a final release build, since we want to
+  # be able to see the RS version number change during development.
+  # See build/core/version_defaults.mk for more information about this.
+  RS_VERSION := "(1 + $(PLATFORM_SDK_VERSION))"
+endif
+local_cflags_for_slang += -DRS_VERSION=$(RS_VERSION)
 
 static_libraries_needed_by_slang := \
 	libLLVMBitWriter_2_9 \
@@ -55,6 +66,8 @@ LOCAL_CLANG := true
 endif
 
 LOCAL_CFLAGS += $(local_cflags_for_slang)
+# Needed because clang headers used by slang_rs.cpp aren't clean
+LOCAL_CFLAGS += -fno-strict-aliasing
 
 TBLGEN_TABLES :=    \
 	AttrList.inc	\
@@ -170,6 +183,9 @@ ifeq ($(HOST_OS),windows)
 else
   LOCAL_LDLIBS := -ldl -lpthread
 endif
+
+# Needed because clang headers used by slang_rs.cpp aren't clean
+LOCAL_CFLAGS += -fno-strict-aliasing
 
 # For build RSCCOptions.inc from RSCCOptions.td
 intermediates := $(call local-generated-sources-dir)
